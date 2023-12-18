@@ -1,65 +1,102 @@
-module "ipam" {
-  source  = "./modules/ipam"
-  tags    = var.ipam.tags
-  cascade = var.ipam.cascade
+resource "aws_vpc_ipam" "this" {
+  count = var.vpc_ipam.ipam != null ? 1 : 0
+
+  description = var.vpc_ipam.ipam.description
+  dynamic "operating_regions" {
+    for_each = var.vpc_ipam.ipam.operating_regions
+    content {
+      region_name = operating_regions.value.region_name
+    }
+  }
+  tags    = var.vpc_ipam.ipam.tags
+  cascade = var.vpc_ipam.ipam.cascade
 }
 
-module "vpc_ipam_pool" {
-  source                            = "./modules/pool"
-  address_family                    = var.pool.address_family
-  allocation_default_netmask_length = var.pool.allocation_default_netmask_length
-  allocation_max_netmask_length     = var.pool.allocation_max_netmask_length
-  allocation_min_netmask_length     = var.pool.allocation_min_netmask_length
-  allocation_resource_tags          = var.pool.allocation_resource_tags
-  auto_import                       = var.pool.auto_import
-  aws_service                       = var.pool.aws_service
-  ipam_scope_id                     = var.pool.ipam_scope_id
-  locale                            = var.pool.locale
-  publicly_advertisable             = var.pool.publicly_advertisable
-  public_ip_source                  = var.pool.public_ip_source
-  source_ipam_pool_id               = var.pool.source_ipam_pool_id
-  tags                              = var.pool.tags
+resource "aws_vpc_ipam_pool" "this" {
+  for_each = { for pool in var.vpc_ipam.pools : pool.name => pool }
+
+  address_family                    = try(lower(each.value.address_family), null)
+  allocation_default_netmask_length = each.value.allocation_default_netmask_length
+  allocation_max_netmask_length     = each.value.allocation_max_netmask_length
+  allocation_min_netmask_length     = each.value.allocation_min_netmask_length
+  allocation_resource_tags          = each.value.allocation_resource_tags
+  auto_import                       = each.value.auto_import
+  aws_service                       = try(lower(each.value.aws_service), null)
+  description                       = each.value.description
+  ipam_scope_id = coalesce(
+    each.value.ipam_scope_name == "private_default_scope" ? aws_vpc_ipam.this[0].private_default_scope_id : null,
+    each.value.ipam_scope_name == "public_default_scope" ? aws_vpc_ipam.this[0].public_default_scope_id : null,
+    try(aws_vpc_ipam_scope.this[each.value.ipam_scope_name].id, null),
+    each.value.ipam_scope_id,
+  )
+  locale                = try(lower(each.value.locale), null)
+  publicly_advertisable = each.value.publicly_advertisable
+  public_ip_source      = each.value.public_ip_source
+  source_ipam_pool_id   = each.value.source_ipam_pool_id
+  tags                  = each.value.tags
+
+  lifecycle {
+    precondition {
+      condition     = each.value.ipam_scope_name != "" && each.value.ipam_scope_id != ""
+      error_message = "You can't create a scope with both a name and an ID"
+    }
+  }
 }
 
-module "vpc_ipam_pool_cidr" {
-  source                               = "./modules/pool-cidr"
-  cidr                                 = var.pool_cidr.cidr
-  cidr_authorization_context_message   = var.pool_cidr.cidr_authorization_context_message
-  cidr_authorization_context_signature = var.pool_cidr.cidr_authorization_context_signature
-  ipam_pool_id                         = var.pool_cidr.ipam_pool_id
-  netmask_length                       = var.pool_cidr.netmask_length
+resource "aws_vpc_ipam_pool_cidr" "this" {
+  for_each = { for cidr in var.vpc_ipam.pool_cidrs : cidr.name => cidr }
+
+  cidr = each.value.cidr
+  dynamic "cidr_authorization_context" {
+    for_each = each.value.cidr_authorization_context != null ? [1] : []
+
+    content {
+      message   = each.value.cidr_authorization_context_message
+      signature = each.value.cidr_authorization_context_signature
+    }
+  }
+
+  ipam_pool_id   = aws_vpc_ipam_pool.this[var.vpc_ipam.pools[0].name].id
+  netmask_length = each.value.netmask_length
+
+  lifecycle {
+    precondition {
+      condition     = each.value.cidr != "" && each.value.netmask_length != ""
+      error_message = "Cannot set both 'cidr' and 'netmask_length'."
+    }
+  }
 }
 
-module "vpc_ipam_pool_cidr_allocation" {
-  source           = "./modules/pool-cidr-allocation"
-  cidr             = var.pool_cidr_allocation.cidr
-  disallowed_cidrs = var.pool_cidr_allocation.disallowed_cidrs
-  ipam_pool_id     = var.pool_cidr_allocation.ipam_pool_id
-  netmask_length   = var.pool_cidr_allocation.netmask_length
+resource "aws_vpc_ipam_pool_cidr_allocation" "this" {
+  for_each = { for allocation in var.vpc_ipam.pool_cidr_allocations : allocation.cidr => allocation }
+
+  cidr             = each.value.cidr
+  description      = each.value.description
+  disallowed_cidrs = each.value.disallowed_cidrs
+  ipam_pool_id     = each.value.ipam_pool_id
+  netmask_length   = each.value.netmask_length
 }
 
-module "vpc_ipam_resource_discovery" {
-  source      = "./modules/resource-discovery"
-  region_name = var.resource_discovery.region_name
-  tags        = var.resource_discovery.tags
+# unsure of implementation usage? could be useful for checking/assigning next CIDR (dynamically)?
+resource "aws_vpc_ipam_preview_next_cidr" "this" {
+  count = var.vpc_ipam.preview_next_cidr != null ? 1 : 0
+
+  disallowed_cidrs = var.vpc_ipam.preview_next_cidr.disallowed_cidrs
+  ipam_pool_id     = var.vpc_ipam.preview_next_cidr.ipam_pool_id
+  netmask_length   = var.vpc_ipam.preview_next_cidr.netmask_length
 }
 
-module "vpc_ipam_resource_discovery_association" {
-  source                     = "./modules/resource-discovery-association"
-  ipam_id                    = var.resource_discovery_association.ipam_id
-  ipam_resource_discovery_id = var.resource_discovery_association.ipam_resource_discovery_id
-  tags                       = var.resource_discovery_association.tags
-}
+resource "aws_vpc_ipam_scope" "this" {
+  for_each = { for scope in var.vpc_ipam.scopes : scope.name => scope }
 
-module "vpc_ipam_preview_next_cidr" {
-  source           = "./modules/preview-next-cidr"
-  disallowed_cidrs = var.preview_next_cidr.disallowed_cidrs
-  ipam_pool_id     = var.preview_next_cidr.ipam_pool_id
-  netmask_length   = var.preview_next_cidr.netmask_length
-}
+  ipam_id     = aws_vpc_ipam.this[0].id
+  description = each.value.description
+  tags        = each.value.tags
 
-module "vpc_ipam_scope" {
-  source  = "./modules/scope"
-  ipam_id = var.scope.ipam_id
-  tags    = var.scope.tags
+  lifecycle {
+    precondition {
+      condition     = var.vpc_ipam.ipam != null
+      error_message = "You can't create a scope without creating an IPAM"
+    }
+  }
 }
