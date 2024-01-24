@@ -35,6 +35,7 @@ Managing a hierarchy of pools can be a bit tricky. You'll need to call the modul
 | Name | Description |
 |------|-------------|
 | <a name="output_ipam"></a> [ipam](#output\_ipam) | Object of all AWS VPC IPAM |
+| <a name="output_pool_cidr"></a> [pool\_cidr](#output\_pool\_cidr) | Map of VPC IPAM Pool Cidrs objects |
 | <a name="output_pools"></a> [pools](#output\_pools) | Map of VPC IPAM Pool Objects |
 | <a name="output_scopes"></a> [scopes](#output\_scopes) | Map of VPC IPAM Scope objects |
 
