@@ -34,11 +34,9 @@ module "create_pool" {
         allocation_min_netmask_length     = "16"
         allocation_max_netmask_length     = "16"
         description                       = random_string.this.result
-        ipam_scope_id                     = module.create_ipam.ipam[0].private_default_scope_id
         locale                            = "us-east-1"
-        tags = {
-          name = "broker_managed"
-        }
+
+        ipam_scope_id = module.create_ipam.ipam.private_default_scope_id
       },
     ]
   }

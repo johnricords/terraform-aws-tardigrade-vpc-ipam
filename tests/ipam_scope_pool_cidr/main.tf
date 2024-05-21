@@ -22,9 +22,6 @@ module "create_ipam" {
       {
         name        = "high_level_container"
         description = random_string.this.result
-        tags = {
-          name = "broker_managed"
-        }
       },
     ]
     pools = [
@@ -35,17 +32,16 @@ module "create_ipam" {
         allocation_min_netmask_length     = "16"
         allocation_max_netmask_length     = "16"
         description                       = random_string.this.result
-        ipam_scope_name                   = "private_default_scope"
         locale                            = "us-east-1"
-        tags = {
-          name = "broker_managed"
-        }
+
+        ipam_scope_name = "private_default_scope"
       },
     ]
     pool_cidrs = [
       {
-        name         = "prod_cidrs"
-        cidr         = "10.0.0.0/16"
+        name = "prod_cidrs"
+        cidr = "10.0.0.0/16"
+
         ipam_pool_id = "pool_of_cidrs"
       },
     ]

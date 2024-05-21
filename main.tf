@@ -8,8 +8,12 @@ resource "aws_vpc_ipam" "this" {
       region_name = operating_regions.value.region_name
     }
   }
-  tags    = var.vpc_ipam.ipam.tags
   cascade = var.vpc_ipam.ipam.cascade
+
+  tags = merge(
+    var.vpc_ipam.ipam.name != null ? { Name = var.vpc_ipam.ipam.name } : {},
+    var.vpc_ipam.ipam.tags,
+  )
 }
 
 resource "aws_vpc_ipam_pool" "this" {
@@ -33,7 +37,13 @@ resource "aws_vpc_ipam_pool" "this" {
   publicly_advertisable = each.value.publicly_advertisable
   public_ip_source      = each.value.public_ip_source
   source_ipam_pool_id   = each.value.source_ipam_pool_id
-  tags                  = each.value.tags
+
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    each.value.tags,
+  )
 
   lifecycle {
     precondition {
@@ -91,7 +101,13 @@ resource "aws_vpc_ipam_scope" "this" {
 
   ipam_id     = aws_vpc_ipam.this[0].id
   description = each.value.description
-  tags        = each.value.tags
+
+  tags = merge(
+    {
+      Name = each.value.name
+    },
+    each.value.tags,
+  )
 
   lifecycle {
     precondition {

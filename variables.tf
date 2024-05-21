@@ -2,6 +2,7 @@ variable "vpc_ipam" {
   description = "Object of inputs for all IPAM configuration resources"
   type = object({
     ipam = optional(object({
+      name = optional(string)
       operating_regions = list(object({
         region_name = string
       }))

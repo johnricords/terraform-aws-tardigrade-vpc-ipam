@@ -21,23 +21,10 @@ module "create_ipam" {
       {
         name        = "high_level_container"
         description = random_string.this.result
-        tags = {
-          name = "broker_managed"
-        }
       },
     ]
   }
 }
-
-
-
-# module "scope" {
-#   source = "../.."
-
-#   vpc_ipam = {
-
-#   }
-# }
 
 module "create_pool" {
   source = "../.."
@@ -53,9 +40,7 @@ module "create_pool" {
         allocation_max_netmask_length     = "16"
         description                       = random_string.this.result
         locale                            = "us-east-1"
-        tags = {
-          name = "broker_managed"
-        }
+
         ipam_scope_id = module.create_ipam.scopes["high_level_container"].id
       },
     ]
@@ -75,9 +60,7 @@ module "create_child_pool" {
         allocation_max_netmask_length     = "16"
         description                       = random_string.this.result
         locale                            = "us-east-1"
-        tags = {
-          name = "broker_managed"
-        }
+
         ipam_scope_id       = module.create_ipam.scopes["high_level_container"].id
         source_ipam_pool_id = module.create_pool.pools["pool_of_cidrs"].id
       },

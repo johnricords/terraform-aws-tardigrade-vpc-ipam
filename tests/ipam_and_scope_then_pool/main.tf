@@ -22,9 +22,6 @@ module "create_ipam" {
       {
         name        = "high_level_container"
         description = random_string.this.result
-        tags = {
-          name = "broker_managed"
-        }
       },
     ]
   }
@@ -44,9 +41,7 @@ module "create_pool" {
         allocation_max_netmask_length     = "16"
         description                       = random_string.this.result
         locale                            = "us-east-1"
-        tags = {
-          name = "broker_managed"
-        }
+
         ipam_scope_id = module.create_ipam.scopes["high_level_container"].id
       },
     ]
